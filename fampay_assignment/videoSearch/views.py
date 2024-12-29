@@ -4,12 +4,14 @@ import requests,threading,time
 from django.core.paginator import Paginator
 from django.conf import settings
 from .models import YouTubeVideo
+from rapidfuzz import fuzz
 # import YouTubeVideo
 # Create your views here.
 SEARCH_QUERY = "Python programming"
 fetching_status_flag={}
 fetching_events = {}
 YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/search"
+FUZZY_SEARCH_FACTOR=getattr(settings,'FUZZY_SEARCH_FACTOR')
 def test(request):
     return HttpResponse("Test successful")
 def periodic_fetching(search_query,stop_event):
@@ -56,13 +58,6 @@ def periodic_fetching(search_query,stop_event):
                         publish_time=snippet.get('publishTime', ''),
                         query=search_query,
                     )
-                # for video in videos:
-                #     # videoList.append(Yout)
-                #     snippet = video["snippet"]
-                #     print(f"- Title: {snippet['title']}")
-                #     print(f"  Description: {snippet['description']}")
-                #     print(f"  Published At: {snippet['publishedAt']}")
-                #     print(f"  Thumbnail URL: {snippet['thumbnails']['default']['url']}\n")
             else:
                 print(f"Error fetching videos: {response.status_code}, {response.text}")
         time.sleep(10)
@@ -116,26 +111,21 @@ def get_videos(request):
 
     
 def search_videos(request):
-    query = request.GET.get('q', '').replace('+',' ').strip()
-    if query:
-        videos = YouTubeVideo.objects.filter(
-            title__icontains=query
-        ) | YouTubeVideo.objects.filter(
-            description__icontains=query
-        )
-    else:
-        videos = YouTubeVideo.objects.none()
-    videos_result = []
-    for video in videos:
-        video_data = {
-            "title": video.title,
-            "description": video.description,
-            "published_at": video.published_at,
-            "thumbnail_url": video.thumbnail_default_url, 
-        }
-        videos_result.append(video_data)
-
-    # Return the filtered videos as a JSON response
+    query = request.GET.get('q', '').replace('+',' ')
+    if query:   
+        videos_result = []
+        videos=YouTubeVideo.objects.all()
+        for video in videos:
+            title_similarity = fuzz.partial_ratio(video.title.lower(), query.lower())
+            description_similarity = fuzz.partial_ratio(video.description.lower(), query.lower())
+            if title_similarity > FUZZY_SEARCH_FACTOR or description_similarity > FUZZY_SEARCH_FACTOR:
+                video_data = {
+                    "title": video.title,
+                    "description": video.description,
+                    "published_at": video.published_at,
+                    "thumbnail_url": video.thumbnail_default_url, 
+                }
+                videos_result.append(video_data)
     return JsonResponse({
         "videos": videos_result
     })
