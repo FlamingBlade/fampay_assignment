@@ -23,6 +23,7 @@ def fetch_videos(request):
     response = requests.get(YOUTUBE_API_URL, params=params)
     if response.status_code == 200:
         videos = response.json().get("items", [])
+        print(videos[0])
         print("\nLatest Videos:")
         for video in videos:
             snippet = video["snippet"]
