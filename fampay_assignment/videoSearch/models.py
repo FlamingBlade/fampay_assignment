@@ -21,6 +21,7 @@ class YouTubeVideo(models.Model):
     channel_title = models.CharField(max_length=255)
     live_broadcast_content = models.CharField(max_length=50)
     publish_time = models.DateTimeField()
+    query=models.CharField(max_length=255,default="test")
     
     def __str__(self):
         return self.title
